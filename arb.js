@@ -39,11 +39,11 @@ function getContractDetails(contractName)
     return obj
 }
 
-// setInterval(blockUpdater,60000)
+setInterval(blockUpdater,6000)
 
 async function blockUpdater()
 {
-    web3.eth.getBlockNumber().then(readContract);
+    web3.eth.getBlockNumber().then(readOrderBook);
 }
 
 
@@ -62,7 +62,7 @@ async function readContract(latestBlock) {
         filter: {
             value: []    
         },
-        fromBlock:  latestBlock-180,                  //Number || "earliest" || "pending" || "latest"
+        fromBlock:  latestBlock-200,                  //Number || "earliest" || "pending" || "latest"
         toBlock: latestBlock
     };  
 
@@ -73,14 +73,158 @@ async function readContract(latestBlock) {
     web3.eth.getBlockNumber().then(console.log);
 }
 
-async function addOrder()       //need to add parameters later
+async function readOrderBook(latestBlock) { 
+
+  let contractDetails = getContractDetails('OrderBook')
+  
+  const abi = contractDetails.contractAbi
+  const contractAddress = contractDetails.contractAddress
+
+  let MyContract = new web3.eth.Contract(abi, contractAddress);
+  console.log("listening for events on ", contractAddress)
+  console.log("starting block", latestBlock-200)
+
+
+    let options = {
+        filter: {
+            value: []    
+        },
+        fromBlock:  latestBlock-2000,                  //Number || "earliest" || "pending" || "latest"
+        toBlock: latestBlock
+    };  
+
+    MyContract.getPastEvents('CreateIncreaseOrder', options)
+    .then(results => ordersHandler(results))
+    .catch(err => console.log(err));    
+
+    MyContract.getPastEvents('CreateDecreaseOrder', options)
+    .then(results => ordersHandler(results))
+    .catch(err => console.log(err)); 
+
+    MyContract.getPastEvents('CreateSwapOrder', options)
+    .then(results => ordersHandler(results))
+    .catch(err => console.log(err)); 
+
+    MyContract.getPastEvents('ExecuteIncreaseOrder', options)
+    .then(results => ordersHandler(results))
+    .catch(err => console.log(err));   
+
+    MyContract.getPastEvents('ExecuteDecreaseOrder', options)
+    .then(results => ordersHandler(results))
+    .catch(err => console.log(err));
+
+    MyContract.getPastEvents('ExecuteSwapOrder', options)
+    .then(results => ordersHandler(results))
+    .catch(err => console.log(err));
+
+    MyContract.getPastEvents('CancelIncreaseOrder', options)
+    .then(results => ordersHandler(results))
+    .catch(err => console.log(err));    
+
+    MyContract.getPastEvents('CancelDecreaseOrder', options)
+    .then(results => ordersHandler(results))
+    .catch(err => console.log(err));    
+
+    MyContract.getPastEvents('CancelSwapOrder', options)
+    .then(results => ordersHandler(results))
+    .catch(err => console.log(err)); 
+    
+
+    web3.eth.getBlockNumber().then(console.log);
+}
+
+async function readPositionRouter(latestBlock) {
+    let contractDetails = getContractDetails('PositionRouter')
+    
+    const abi = contractDetails.contractAbi
+    const contractAddress = contractDetails.contractAddress
+  
+    let MyContract = new web3.eth.Contract(abi, contractAddress);
+    console.log("listening for events on ", contractAddress)
+    console.log("starting block", latestBlock-200)
+  
+  
+      let options = {
+          filter: {
+              value: []    
+          },
+          fromBlock:  latestBlock-200,                  //Number || "earliest" || "pending" || "latest"
+          toBlock: latestBlock
+      };  
+  
+      MyContract.getPastEvents('CreateIncreasePosition', options)
+      .then(results => console.log(results))
+      .catch(err => console.log(err));    
+  
+      MyContract.getPastEvents('CreateDecreasePosition', options)
+      .then(results => console.log(results))
+      .catch(err => console.log(err)); 
+  
+      MyContract.getPastEvents('ExecuteIncreasePosition', options)
+      .then(results => console.log(results))
+      .catch(err => console.log(err));   
+  
+      MyContract.getPastEvents('ExecuteDecreasePosition', options)
+      .then(results => console.log(results))
+      .catch(err => console.log(err));
+  
+      MyContract.getPastEvents('CancelIncreasePosition', options)
+      .then(results => console.log(results))
+      .catch(err => console.log(err));    
+  
+      MyContract.getPastEvents('CancelDecreasePosition', options)
+      .then(results => console.log(results))
+      .catch(err => console.log(err));       
+  
+      web3.eth.getBlockNumber().then(console.log);
+  }
+
+async function ordersHandler(newOrders)
+{
+    newOrders.forEach(orderAction)
+    newOrders.forEach(updateOrderStat)
+}  
+
+async function orderAction(value)
+{
+    console.log(value)
+    if(value.event === 'CreateIncreaseOrder')
+    {
+        await addOrder("increase",value.address,value.returnValues.orderIndex,"open",value.blockNumber)
+        console.log('Order Added')
+    }
+    if(value.event === 'CreateDecreaseOrder')
+    {
+        await addOrder("decrease",value.address,value.returnValues.orderIndex,"open",value.blockNumber)
+        console.log('Order Added')
+    }
+    if(value.event === 'CreateSwapOrder')
+    {
+        await addOrder("swap",value.address,value.returnValues.orderIndex,"open",value.blockNumber)
+        console.log('Order Added')
+    }
+    if(value.event === 'CancelDecreaseOrder' || value.event === 'CancelIncreaseOrder' || value.event === 'CancelSwapOrder' )
+    {
+        await updateOrder(value.returnValues.orderIndex,"cancelled")
+        console.log('Order Cancelled')
+    }
+    if(value.event === 'ExecuteDecreaseOrder' || value.event === 'ExecuteIncreaseOrder' || value.event === 'ExecuteSwapOrder' )
+    {
+        await updateOrder(value.returnValues.orderIndex,"executed")
+        console.log('Order Cancelled')
+    }
+    
+    
+}
+
+async function addOrder(type,account,index,status,timestamp)       //need to add parameters later
 {
     const data = new Order({
-        "type": "increase",
-        "account": "0xda0e58b51d0ebdeab4866ef054fb25a303dd9ccb",
-        "index": "1702",
-        "status": "open",
-        "createdTimestamp": 1682458221
+        "type": type,
+        "account": account,
+        "index": index,
+        "status": status,
+        "createdTimestamp": timestamp
       })
 
     try {
@@ -92,28 +236,113 @@ async function addOrder()       //need to add parameters later
     }
 }
 
-
-async function addOrderStat()       //need to add parameters later and change to just update value based on parameters
+async function updateOrder(index,newStatus)       //need to add parameters later
 {
-    const data = new OrderStat({
-        "openSwap": 197,
-        "openIncrease": 489,
-        "openDecrease": 6092,
-        "executedSwap": 3938,
-        "executedIncrease": 45415,
-        "executedDecrease": 74680,
-        "cancelledSwap": 3078,
-        "cancelledIncrease": 47692,
-        "cancelledDecrease": 121531
-      })
-
     try {
-        const dataToSave = await data.save();
-        console.log(dataToSave)
+        const newData = await Order.findOneAndUpdate({index: index},{status:newStatus})
+        console.log(newData)
     }
     catch (error) {
         console.log(error)
     }
+}
+
+
+async function updateOrderStat(value)       //need to add parameters later and change to just update value based on parameters
+{   
+    if(value.event === 'CreateIncreaseOrder')
+    {   
+        try{
+            await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{openIncrease:1}})
+            console.log('Count Updated')
+        }
+        catch(err){
+            console.log(err)
+        }  
+    }
+    if(value.event === 'CreateDecreaseOrder')
+    {   
+        try{
+            await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{openDecrease:1}})
+            console.log('Count Updated')
+        }
+        catch(err){
+            console.log(err)
+        }  
+    }
+    if(value.event === 'CreateSwapOrder')
+    {   
+        try{
+            await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{openSwap:1}})
+            console.log('Count Updated')
+        }
+        catch(err){
+            console.log(err)
+        }  
+    }
+    if(value.event === 'ExecuteIncreaseOrder')
+    {   
+        try{
+            await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{executedIncrease:1}})
+            console.log('Count Updated')
+        }
+        catch(err){
+            console.log(err)
+        }  
+    }
+    if(value.event === 'ExecuteDecreaseOrder')
+    {   
+        try{
+            await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{executedDecrease:1}})
+            console.log('Count Updated')
+        }
+        catch(err){
+            console.log(err)
+        }  
+    }
+    if(value.event === 'ExecuteSwapOrder')
+    {   
+        try{
+            await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{executedSwap:1}})
+            console.log('Count Updated')
+        }
+        catch(err){
+            console.log(err)
+        }  
+    }
+    if(value.event === 'CancelIncreaseOrder')
+    {   
+        try{
+            await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{cancelledIncrease:1}})
+            console.log('Count Updated')
+        }
+        catch(err){
+            console.log(err)
+        }  
+    }
+    if(value.event === 'CancelDecreaseOrder')
+    {   
+        try{
+            await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{cancelledDecrease:1}})
+            console.log('Count Updated')
+        }
+        catch(err){
+            console.log(err)
+        }  
+    }
+    if(value.event === 'CancelSwapOrder')
+    {   
+        try{
+            await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{cancelledSwap:1}})
+            console.log('Count Updated')
+        }
+        catch(err){
+            console.log(err)
+        }  
+    }
+    
+
+
 }
 
 async function addUserStat()       //need to add parameters later and change to just update value based on parameters
@@ -170,4 +399,5 @@ async function addAction()       //need to add parameters later and change to ju
     }
 }
 
-addAction()
+// add event listener functions
+// make functions for performing actions on events logged
