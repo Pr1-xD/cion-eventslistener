@@ -40,11 +40,11 @@ const action = new mongoose.Schema({
     txhash: {
         required: true,
         type: String
-    },
-    timestamp: {
-        required: true,
-        type: Number
     }
+    // timestamp: {
+    //     required: true,
+    //     type: Number
+    // }
     
 })
 
@@ -53,18 +53,22 @@ const position = new mongoose.Schema({
         required: true,
         type: String
     },
-    indexToken: {
+    initialPosition: {
         required: true,
-        type: String
-    },
-    collateralToken: {
-        required: true,
-        type: String
-    },
-    isLong: {
-        required: true,
-        type: Boolean
+        type: Object
     }
+    // indexToken: {
+    //     required: true,
+    //     type: String
+    // },
+    // collateralToken: {
+    //     required: true,
+    //     type: String
+    // },
+    // isLong: {
+    //     required: true,
+    //     type: Boolean
+    // }
     
 })
 
@@ -120,11 +124,35 @@ const orderStat = new mongoose.Schema({
     
 })
 
+const positionStat = new mongoose.Schema({
+    totalLongPositionSizes: {
+        required: true,
+        type: String
+    },
+    totalActivePositions: {
+        required: true,
+        type: Number
+    },
+    totalLongPositionCollaterals: {
+        required: true,
+        type: String
+    },
+    totalShortPositionCollaterals: {
+        required: true,
+        type: String
+    },
+    totalShortPositionSizes: {
+        required: true,
+        type: String
+    },
+})
+
 Order = mongoose.model('Order', order)
 UserStat = mongoose.model('UserStat', userStat)
 OrderStat = mongoose.model('OrderStat', orderStat)
 Position = mongoose.model('Position', position)
+PositionStat = mongoose.model('PositionStat', positionStat)
 Action = mongoose.model('Action', action)
 
 
-module.exports = {Order,OrderStat,UserStat,Position,Action}
+module.exports = {Order,OrderStat,UserStat,Position,PositionStat,Action}
