@@ -89,7 +89,7 @@ const lastBlock = new mongoose.Schema({
         required: true,
         type: Number
     },
-    PositionRouter: {
+    positionRouter: {
         required: true,
         type: Number
     }

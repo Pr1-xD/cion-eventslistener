@@ -39,12 +39,16 @@ function getContractDetails(contractName)               // Gets contract ABI and
     return obj
 }
 
-setInterval(blockUpdater,6000)                          // Loop script after interval
+setInterval(blockUpdater,10000)                          // Loop script after interval
 
 async function blockUpdater()                           // Gets latest block
 {   
-    web3.eth.getBlockNumber().then(readPositionRouter);
-    web3.eth.getBlockNumber().then(readOrderBook);
+    let startBlock = await LastBlock.findById('6455072bbd8efae823ddcef5')
+    console.log(startBlock)
+    readOrderBook(startBlock.orderBook)
+    readPositionRouter(startBlock.positionRouter)
+    // web3.eth.getBlockNumber().then(readPositionRouter);
+    // web3.eth.getBlockNumber().then(readOrderBook);
 }
 
 
@@ -74,7 +78,7 @@ async function readContract(latestBlock) {              // sample contract event
     web3.eth.getBlockNumber().then(console.log);
 }
 
-async function readOrderBook(latestBlock) {             // Order Book Events Listener
+async function readOrderBook(startBlock) {             // Order Book Events Listener
 
   let contractDetails = getContractDetails('OrderBook')
   
@@ -83,15 +87,15 @@ async function readOrderBook(latestBlock) {             // Order Book Events Lis
 
   let MyContract = new web3.eth.Contract(abi, contractAddress);
   console.log("listening for events on ", contractAddress)
-  console.log("starting block", latestBlock-2000)
+  console.log("starting block", startBlock)
 
 
     let options = {                                     // Specify starting and ending block
         filter: {
             value: []    
         },
-        fromBlock:  latestBlock-2000,                  //Number || "earliest" || "pending" || "latest"
-        toBlock: latestBlock
+        fromBlock:  startBlock,                  //Number || "earliest" || "pending" || "latest"
+        toBlock: "latest"
     };  
 
     // Check for all orders placed 
@@ -132,7 +136,8 @@ async function readOrderBook(latestBlock) {             // Order Book Events Lis
     .then(results => ordersHandler(results))
     .catch(err => console.log(err)); 
     
-
+    latestBlock= await web3.eth.getBlockNumber()
+    await LastBlock.findByIdAndUpdate('6455072bbd8efae823ddcef5',{orderBook:latestBlock})
     web3.eth.getBlockNumber().then(console.log);        // Logs the latest updated block
 }
 
@@ -320,7 +325,7 @@ async function updateOrderStat(value)       //Updates the stats for orders
 /////////////////////////
 /////////////////////////
 
-async function readPositionRouter(latestBlock) {
+async function readPositionRouter(startBlock) {
     let contractDetails = getContractDetails('PositionRouter')
     
     const abi = contractDetails.contractAbi
@@ -328,15 +333,15 @@ async function readPositionRouter(latestBlock) {
   
     let MyContract = new web3.eth.Contract(abi, contractAddress);
     console.log("listening for events on ", contractAddress)
-    console.log("starting block", latestBlock-2000)
+    console.log("starting block", startBlock)
   
   
       let options = {
           filter: {
               value: []    
           },
-          fromBlock:  latestBlock-2000,                  //Number || "earliest" || "pending" || "latest"
-          toBlock: latestBlock
+          fromBlock:  startBlock,                  //Number || "earliest" || "pending" || "latest"
+          toBlock: "latest"
       };  
   
       MyContract.getPastEvents('CreateIncreasePosition', options)
@@ -362,7 +367,9 @@ async function readPositionRouter(latestBlock) {
       MyContract.getPastEvents('CancelDecreasePosition', options)
       .then(results => positionsHandler(results))
       .catch(err => console.log(err));       
-  
+      
+      latestBlock= await web3.eth.getBlockNumber()
+      await LastBlock.findByIdAndUpdate('6455072bbd8efae823ddcef5',{positionRouter:latestBlock})
       web3.eth.getBlockNumber().then(console.log);
   }
 
