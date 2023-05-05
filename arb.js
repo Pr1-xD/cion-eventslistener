@@ -18,7 +18,7 @@ database.once('connected', () => {        //db connection
     console.log('Database Connected');
 })
 
-const {Order, OrderStat,UserStat,Position, Action} = require('./model/model');      //importing models
+const {Order,OrderStat,UserStat,Position,PositionStat,Action,LastBlock} = require('./model/model');      //importing models
 
 const app = express();
 
@@ -136,65 +136,12 @@ async function readOrderBook(latestBlock) {             // Order Book Events Lis
     web3.eth.getBlockNumber().then(console.log);        // Logs the latest updated block
 }
 
-async function readPositionRouter(latestBlock) {
-    let contractDetails = getContractDetails('PositionRouter')
-    
-    const abi = contractDetails.contractAbi
-    const contractAddress = contractDetails.contractAddress
-  
-    let MyContract = new web3.eth.Contract(abi, contractAddress);
-    console.log("listening for events on ", contractAddress)
-    console.log("starting block", latestBlock-2000)
-  
-  
-      let options = {
-          filter: {
-              value: []    
-          },
-          fromBlock:  latestBlock-2000,                  //Number || "earliest" || "pending" || "latest"
-          toBlock: latestBlock
-      };  
-  
-      MyContract.getPastEvents('CreateIncreasePosition', options)
-      .then(results => positionsHandler(results))
-      .catch(err => console.log(err));    
-  
-      MyContract.getPastEvents('CreateDecreasePosition', options)
-      .then(results => positionsHandler(results))
-      .catch(err => console.log(err)); 
-  
-      MyContract.getPastEvents('ExecuteIncreasePosition', options)
-      .then(results => positionsHandler(results))
-      .catch(err => console.log(err));   
-  
-      MyContract.getPastEvents('ExecuteDecreasePosition', options)
-      .then(results => positionsHandler(results))
-      .catch(err => console.log(err));
-  
-      MyContract.getPastEvents('CancelIncreasePosition', options)
-      .then(results => positionsHandler(results))
-      .catch(err => console.log(err));    
-  
-      MyContract.getPastEvents('CancelDecreasePosition', options)
-      .then(results => positionsHandler(results))
-      .catch(err => console.log(err));       
-  
-      web3.eth.getBlockNumber().then(console.log);
-  }
-
 async function ordersHandler(newOrders)         // Handles all new orders logged
 {
     newOrders.forEach(orderAction)
     newOrders.forEach(updateOrderStat)
     newOrders.forEach(addressChecker)
-}  
-
-async function positionsHandler(newPositions)         // Handles all new orders logged
-{
-    newPositions.forEach(positionAction)
-    newPositions.forEach(handlePositionForAction)
-    // newPositions.forEach(addressChecker)
-}  
+} 
 
 async function orderAction(value)               // Handles orders based on action
 {
@@ -228,71 +175,6 @@ async function orderAction(value)               // Handles orders based on actio
     
 }
 
-async function positionAction(value)
-{
-    console.log(value)
-    if(value.event === 'CreateIncreasePosition' || value.event === 'CreateDecreasePosition')
-    {   
-        await addPositon(value.returnValues.account,value.returnValues.indexToken,value.returnValues.path[0],value.returnValues.isLong)
-        console.log('Position Added')
-    }
-
-}
-
-async function handlePositionForAction(value)
-{
-    if(value.event === 'CreateIncreasePosition')
-    {   
-        try{
-            // await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{openIncrease:1}})
-            addAction('CreateIncreasePosition',value.blockNumber,value.returnValues.account,value.transactionHash)
-            // console.log('Count Updated')
-        }
-        catch(err){
-            console.log(err)
-        }  
-    }
-    if(value.event === 'CreateDecreasePosition')
-    {   
-        try{
-            // await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{openIncrease:1}})
-            addAction('CreateDecreasePosition',value.blockNumber,value.returnValues.account,value.transactionHash)
-            // console.log('Count Updated')
-        }
-        catch(err){
-            console.log(err)
-        }  
-    }
-    if(value.event === 'ExecuteDecreasePosition')
-    {   
-        try{
-            // await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{openIncrease:1}})
-            if(value.returnValues.isLong)
-            addAction('DecreasePosition-Long',value.blockNumber,value.returnValues.account,value.transactionHash)
-            else
-            addAction('DecreasePosition-Short',value.blockNumber,value.returnValues.account,value.transactionHash)
-            // console.log('Count Updated')
-        }
-        catch(err){
-            console.log(err)
-        }  
-    }
-    if(value.event === 'ExecuteIncreasePosition')
-    {   
-        try{
-            // await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{openIncrease:1}})
-            if(value.returnValues.isLong)
-            addAction('IncreasePosition-Long',value.blockNumber,value.returnValues.account,value.transactionHash)
-            else
-            addAction('IncreasePosition-Short',value.blockNumber,value.returnValues.account,value.transactionHash)
-            // console.log('Count Updated')
-        }
-        catch(err){
-            console.log(err)
-        }  
-    }
-}
-
 async function addOrder(type,account,index,status,timestamp)       // Add Order to DB
 {
     const data = new Order({
@@ -322,7 +204,6 @@ async function updateOrder(index,newStatus)       // Updates status of order
         console.log(error)
     }
 }
-
 
 async function updateOrderStat(value)       //Updates the stats for orders
 {   
@@ -426,9 +307,145 @@ async function updateOrderStat(value)       //Updates the stats for orders
         }  
     }
     
+}
 
+
+/////////////////////////
+/////////////////////////
+/////////////////////////
+/////////////////////////
+////   Position   ///////
+/////////////////////////
+/////////////////////////
+/////////////////////////
+/////////////////////////
+
+async function readPositionRouter(latestBlock) {
+    let contractDetails = getContractDetails('PositionRouter')
+    
+    const abi = contractDetails.contractAbi
+    const contractAddress = contractDetails.contractAddress
+  
+    let MyContract = new web3.eth.Contract(abi, contractAddress);
+    console.log("listening for events on ", contractAddress)
+    console.log("starting block", latestBlock-2000)
+  
+  
+      let options = {
+          filter: {
+              value: []    
+          },
+          fromBlock:  latestBlock-2000,                  //Number || "earliest" || "pending" || "latest"
+          toBlock: latestBlock
+      };  
+  
+      MyContract.getPastEvents('CreateIncreasePosition', options)
+      .then(results => positionsHandler(results))
+      .catch(err => console.log(err));    
+  
+      MyContract.getPastEvents('CreateDecreasePosition', options)
+      .then(results => positionsHandler(results))
+      .catch(err => console.log(err)); 
+  
+      MyContract.getPastEvents('ExecuteIncreasePosition', options)
+      .then(results => positionsHandler(results))
+      .catch(err => console.log(err));   
+  
+      MyContract.getPastEvents('ExecuteDecreasePosition', options)
+      .then(results => positionsHandler(results))
+      .catch(err => console.log(err));
+  
+      MyContract.getPastEvents('CancelIncreasePosition', options)
+      .then(results => positionsHandler(results))
+      .catch(err => console.log(err));    
+  
+      MyContract.getPastEvents('CancelDecreasePosition', options)
+      .then(results => positionsHandler(results))
+      .catch(err => console.log(err));       
+  
+      web3.eth.getBlockNumber().then(console.log);
+  }
+
+
+
+async function positionsHandler(newPositions)         // Handles all new orders logged
+{
+    newPositions.forEach(positionAction)
+    newPositions.forEach(handlePositionForAction)
+    // newPositions.forEach(addressChecker)
+}  
+
+
+
+async function positionAction(value)
+{
+    console.log(value)
+    if(value.event === 'CreateIncreasePosition' || value.event === 'CreateDecreasePosition')
+    {   
+        await addPositon(value.returnValues.account,value.returnValues.indexToken,value.returnValues.path[0],value.returnValues.isLong)
+        console.log('Position Added')
+    }
 
 }
+
+async function handlePositionForAction(value)
+{
+    if(value.event === 'CreateIncreasePosition')
+    {   
+        try{
+            // await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{openIncrease:1}})
+            addAction('CreateIncreasePosition',value.blockNumber,value.returnValues.account,value.transactionHash)
+            // console.log('Count Updated')
+        }
+        catch(err){
+            console.log(err)
+        }  
+    }
+    if(value.event === 'CreateDecreasePosition')
+    {   
+        try{
+            // await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{openIncrease:1}})
+            addAction('CreateDecreasePosition',value.blockNumber,value.returnValues.account,value.transactionHash)
+            // console.log('Count Updated')
+        }
+        catch(err){
+            console.log(err)
+        }  
+    }
+    if(value.event === 'ExecuteDecreasePosition')
+    {   
+        try{
+            // await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{openIncrease:1}})
+            if(value.returnValues.isLong)
+            addAction('DecreasePosition-Long',value.blockNumber,value.returnValues.account,value.transactionHash)
+            else
+            addAction('DecreasePosition-Short',value.blockNumber,value.returnValues.account,value.transactionHash)
+            // console.log('Count Updated')
+        }
+        catch(err){
+            console.log(err)
+        }  
+    }
+    if(value.event === 'ExecuteIncreasePosition')
+    {   
+        try{
+            // await OrderStat.findByIdAndUpdate('644852d23965e145194ac7a7',{$inc:{openIncrease:1}})
+            if(value.returnValues.isLong)
+            addAction('IncreasePosition-Long',value.blockNumber,value.returnValues.account,value.transactionHash)
+            else
+            addAction('IncreasePosition-Short',value.blockNumber,value.returnValues.account,value.transactionHash)
+            // console.log('Count Updated')
+        }
+        catch(err){
+            console.log(err)
+        }  
+    }
+}
+
+
+
+
+
 
 async function addressChecker(value)        // Checks for new users and updates DB
 {

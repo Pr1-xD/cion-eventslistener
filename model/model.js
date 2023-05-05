@@ -84,6 +84,18 @@ const userStat = new mongoose.Schema({
     
 })
 
+const lastBlock = new mongoose.Schema({
+    orderBook: {
+        required: true,
+        type: Number
+    },
+    PositionRouter: {
+        required: true,
+        type: Number
+    }
+    
+})
+
 const orderStat = new mongoose.Schema({
     openSwap: {
         required: true,
@@ -153,6 +165,7 @@ OrderStat = mongoose.model('OrderStat', orderStat)
 Position = mongoose.model('Position', position)
 PositionStat = mongoose.model('PositionStat', positionStat)
 Action = mongoose.model('Action', action)
+LastBlock = mongoose.model('LastBlock', lastBlock)
 
 
-module.exports = {Order,OrderStat,UserStat,Position,PositionStat,Action}
+module.exports = {Order,OrderStat,UserStat,Position,PositionStat,Action,LastBlock}
